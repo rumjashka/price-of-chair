@@ -1,21 +1,20 @@
-import uuid
 import datetime
-import requests
-from src.common.database import Database
+import uuid
 import src.models.alerts.constants as AlertConstants
-from src.models.items.item import Item
+import requests
 
-__author__ = 'jslvtr'
+from src.common.database import Database
+from src.models.items.item import Item
 
 
 class Alert(object):
-    def __init__(self, user_email, price_limit, item_id, active=True, last_checked=None, _id=None):
+    def __init__(self, user_email, price_limit, item_id, active = True, last_checked = None,_id=None):
         self.user_email = user_email
         self.price_limit = price_limit
-        self.active = active
         self.item = Item.get_by_id(item_id)
         self.last_checked = datetime.datetime.utcnow() if last_checked is None else last_checked
         self._id = uuid.uuid4().hex if _id is None else _id
+        self.active = active
 
     def __repr__(self):
         return "<Alert for {} on item {} with price {}>".format(self.user_email, self.item.name, self.price_limit)
@@ -23,35 +22,37 @@ class Alert(object):
     def send(self):
         return requests.post(
             AlertConstants.URL,
-            auth=("api", AlertConstants.API_KEY),
+            auth = ("api", AlertConstants.API_KEY),
             data={
                 "from": AlertConstants.FROM,
-                "to": self.user_email,
+                "to":self.user_email,
                 "subject": "Price limit reached for {}".format(self.item.name),
-                "text": "We've found a deal! ({}).".format(self.item.url)
+                "text": "We've found a deal! ({}). To navigate to the alert, visit {}".format(
+                    self.item.url, "http://pricing.jslvtr.com/alerts/{}".format(self._id))
             }
         )
 
     @classmethod
-    def find_needing_update(cls, minutes_since_update=AlertConstants.ALERT_TIMEOUT):
+    def find_needing_update(cls, minutes_since_update = AlertConstants.ALERT_TIMEOUT):
         last_updated_limit = datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes_since_update)
         return [cls(**elem) for elem in Database.find(AlertConstants.COLLECTION,
                                                       {"last_checked":
-                                                           {"$lte": last_updated_limit},
-                                                  "active": True
+                                                           {"$lte":last_updated_limit},
+                                                       "active":True
                                                        })]
+        return [cls(**elem) for elem in alerts]
 
     def save_to_mongo(self):
         Database.update(AlertConstants.COLLECTION, {"_id": self._id}, self.json())
 
     def json(self):
         return {
-            "_id": self._id,
-            "price_limit": self.price_limit,
+            "_id":self._id,
+            "price_limit":self.price_limit,
             "last_checked": self.last_checked,
             "user_email": self.user_email,
             "item_id": self.item._id,
-            "active": self.active
+            "active":self.active
         }
 
     def load_item_price(self):
@@ -62,7 +63,7 @@ class Alert(object):
         return self.item.price
 
     def send_email_if_price_reached(self):
-        if self.item.price < self.price_limit:
+        if self.item.price <self.price_limit:
             self.send()
 
     @classmethod
@@ -77,9 +78,10 @@ class Alert(object):
         self.active = False
         self.save_to_mongo()
 
+
     def activate(self):
         self.active = True
         self.save_to_mongo()
 
     def delete(self):
-        Database.remove(AlertConstants.COLLECTION, {'_id': self._id})
+        Database.remove(AlertConstants.COLLECTION, {'_id':self._id})

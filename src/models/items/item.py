@@ -1,12 +1,12 @@
 import uuid
-from bs4 import BeautifulSoup
+
 import requests
+from bs4 import BeautifulSoup
 import re
+
 from src.common.database import Database
 import src.models.items.constants as ItemConstants
 from src.models.stores.store import Store
-
-__author__ = 'jslvtr'
 
 
 class Item(object):
@@ -36,13 +36,13 @@ class Item(object):
         return self.price
 
     def save_to_mongo(self):
-        Database.update(ItemConstants.COLLECTION, {'_id': self._id}, self.json())
+        Database.update(ItemConstants.COLLECTION, {'_id':self._id}, self.json())
 
     def json(self):
         return {
-            "_id": self._id,
             "name": self.name,
             "url": self.url,
+            "_id":self._id,
             "price": self.price
         }
 
